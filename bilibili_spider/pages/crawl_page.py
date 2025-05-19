@@ -1,5 +1,3 @@
-# pages/crawl_page.py
-
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QLineEdit, QSpinBox, QTextEdit,
                              QProgressBar, QFrame, QMessageBox)
@@ -16,12 +14,21 @@ import random
 
 
 class CrawlWorker(QThread):
+    """
+    @description: 爬取工作线程，负责在后台执行评论爬取任务
+    """
     progress = pyqtSignal(str)  # 用于发送进度信息
     error = pyqtSignal(str)
     comment_received = pyqtSignal(dict)  # 用于发送单条评论数据
     finished = pyqtSignal(dict)
 
     def __init__(self, spider, url, max_pages):
+        """
+        @description: 初始化爬取工作线程
+        @param {BilibiliSpider} spider - 爬虫实例
+        @param {str} url - 要爬取的视频URL
+        @param {int} max_pages - 最大爬取页数
+        """
         super().__init__()
         self.spider = spider
         self.url = url
@@ -29,6 +36,9 @@ class CrawlWorker(QThread):
         self.is_running = False
 
     def run(self):
+        """
+        @description: 执行爬取任务的主方法
+        """
         self.is_running = True
         try:
             video_id = self.spider.extract_video_id(self.url)
@@ -132,11 +142,22 @@ class CrawlWorker(QThread):
             self.is_running = False
 
     def stop(self):
+        """
+        @description: 停止爬取任务
+        """
         self.is_running = False
 
 
 class StyledFrame(QFrame):
+    """
+    @description: 自定义样式面板控件
+    """
     def __init__(self, title="", parent=None):
+        """
+        @description: 初始化样式面板
+        @param {str} title - 面板标题
+        @param {QWidget} parent - 父控件
+        """
         super().__init__(parent)
         self.setStyleSheet("""
             StyledFrame {
@@ -162,12 +183,21 @@ class StyledFrame(QFrame):
 
 
 class CrawlPage(QWidget):
+    """
+    @description: 评论爬取页面，提供视频URL输入和爬取控制功能
+    """
     def __init__(self, db_handler, config):
+        """
+        @description: 初始化爬取页面
+        @param {DatabaseHandler} db_handler - 数据库处理器实例
+        @param {Config} config - 配置管理实例
+        """
         super().__init__()
         self.db_handler = db_handler
         self.config = config
         self.crawl_worker = None
 
+        # 初始化爬虫实例
         cookie, _ = self.db_handler.get_valid_cookie()
         if cookie and self.config.set_cookie(cookie):
             self.spider = BilibiliSpider(self.config)
@@ -177,6 +207,9 @@ class CrawlPage(QWidget):
         self.init_ui()
 
     def init_ui(self):
+        """
+        @description: 初始化用户界面
+        """
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
@@ -223,10 +256,12 @@ class CrawlPage(QWidget):
         page_label.setFixedWidth(80)
         control_layout.addWidget(page_label)
 
+        # 页数输入框 - 修复高度问题
         self.page_spinbox = QSpinBox()
         self.page_spinbox.setRange(1, 1000000)
         self.page_spinbox.setValue(10)
         self.page_spinbox.setMinimumWidth(120)
+        self.page_spinbox.setMinimumHeight(27)  # 增加最小高度
         self.page_spinbox.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.page_spinbox.setButtonSymbols(QSpinBox.ButtonSymbols.UpDownArrows)
         self.page_spinbox.setStyleSheet("""
@@ -237,20 +272,33 @@ class CrawlPage(QWidget):
                 background-color: #2d2d2d;
                 color: white;
                 font-size: 14px;
+                min-height: 27px;
             }
             QSpinBox::up-button, QSpinBox::down-button {
                 width: 20px;
+                height: 18px;
                 background: #404040;
                 border: none;
+                subcontrol-origin: border;
+            }
+            QSpinBox::up-button {
+                subcontrol-position: top right;
+            }
+            QSpinBox::down-button {
+                subcontrol-position: bottom right;
             }
             QSpinBox::up-button:hover, QSpinBox::down-button:hover {
                 background: #505050;
+            }
+            QSpinBox::up-button:pressed, QSpinBox::down-button:pressed {
+                background: #606060;
             }
         """)
 
         control_layout.addWidget(self.page_spinbox)
         control_layout.addStretch()
 
+        # 开始爬取按钮
         self.start_button = QPushButton("开始爬取")
         self.start_button.setStyleSheet("""
             QPushButton {
@@ -262,6 +310,7 @@ class CrawlPage(QWidget):
                 font-weight: bold;
                 font-size: 14px;
                 min-width: 120px;
+                min-height: 40px;
             }
             QPushButton:hover {
                 background-color: #1184db;
@@ -302,6 +351,10 @@ class CrawlPage(QWidget):
         self.start_button.clicked.connect(self.start_crawl)
 
     def add_log(self, message):
+        """
+        @description: 添加日志信息到日志显示区域
+        @param {str} message - 日志信息
+        """
         timestamp = datetime.now().strftime('%H:%M:%S')
         self.log_text.append(f"[{timestamp}] {message}")
         self.log_text.verticalScrollBar().setValue(
@@ -309,7 +362,10 @@ class CrawlPage(QWidget):
         )
 
     def handle_comment(self, comment_data):
-        """处理单条评论数据"""
+        """
+        @description: 处理单条评论数据并保存到数据库
+        @param {dict} comment_data - 评论数据字典
+        """
         try:
             comment = Comment(
                 video_id=comment_data['video_id'],
@@ -333,11 +389,19 @@ class CrawlPage(QWidget):
             self.add_log(f"处理评论失败: {str(e)}")
 
     def handle_error(self, error_message):
+        """
+        @description: 处理爬取过程中的错误
+        @param {str} error_message - 错误信息
+        """
         self.add_log(f"爬取失败: {error_message}")
         QMessageBox.critical(self, "错误", f"爬取过程出错: {error_message}")
         self.start_button.setEnabled(True)
 
     def handle_crawl_finished(self, result):
+        """
+        @description: 处理爬取完成事件
+        @param {dict} result - 爬取结果数据
+        """
         try:
             if not result:
                 return
@@ -355,10 +419,13 @@ class CrawlPage(QWidget):
         except Exception as e:
             self.handle_error(str(e))
         finally:
-
             self.start_button.setEnabled(True)
 
     def start_crawl(self):
+        """
+        @description: 开始爬取评论
+        """
+        # 重新获取和设置Cookie
         cookie, _ = self.db_handler.get_valid_cookie()
         if cookie and self.config.set_cookie(cookie):
             self.spider = BilibiliSpider(self.config)

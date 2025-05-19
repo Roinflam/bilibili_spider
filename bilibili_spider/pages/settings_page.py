@@ -1,5 +1,3 @@
-# pages/settings_page.py
-
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QLineEdit, QTextEdit, QFrame,
                              QMessageBox, QSpinBox)
@@ -10,9 +8,16 @@ from bilibili_spider.utils.cookie_helper import CookieHelper
 
 
 class StyledFrame(QFrame):
-    """自定义样式面板"""
+    """
+    @description: 自定义样式面板控件
+    """
 
     def __init__(self, title="", parent=None):
+        """
+        @description: 初始化样式面板
+        @param {str} title - 面板标题
+        @param {QWidget} parent - 父控件
+        """
         super().__init__(parent)
         self.setStyleSheet("""
             StyledFrame {
@@ -38,9 +43,16 @@ class StyledFrame(QFrame):
 
 
 class SettingsPage(QWidget):
-    """设置页面"""
+    """
+    @description: 设置页面，提供Cookie管理、爬虫配置和数据库管理功能
+    """
 
     def __init__(self, config, db_handler):
+        """
+        @description: 初始化设置页面
+        @param {Config} config - 配置管理实例
+        @param {DatabaseHandler} db_handler - 数据库处理器实例
+        """
         super().__init__()
         self.config = config
         self.db_handler = db_handler
@@ -49,6 +61,9 @@ class SettingsPage(QWidget):
         self.load_settings()
 
     def init_ui(self):
+        """
+        @description: 初始化用户界面
+        """
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
@@ -106,6 +121,7 @@ class SettingsPage(QWidget):
                 font-weight: bold;
                 font-size: 14px;
                 min-width: 120px;
+                min-height: 40px;
             }
             QPushButton:hover {
                 background-color: #1184db;
@@ -148,6 +164,7 @@ class SettingsPage(QWidget):
         """)
         delay_layout.addWidget(delay_label)
 
+        # 优化的SpinBox样式 - 修复高度问题
         spinbox_style = """
             QSpinBox {
                 padding: 8px;
@@ -156,21 +173,35 @@ class SettingsPage(QWidget):
                 background-color: #2d2d2d;
                 color: white;
                 font-size: 14px;
+                min-height: 27px;
             }
             QSpinBox::up-button, QSpinBox::down-button {
                 width: 20px;
+                height: 18px;
                 background: #404040;
                 border: none;
+                subcontrol-origin: border;
+            }
+            QSpinBox::up-button {
+                subcontrol-position: top right;
+            }
+            QSpinBox::down-button {
+                subcontrol-position: bottom right;
             }
             QSpinBox::up-button:hover, QSpinBox::down-button:hover {
                 background: #505050;
             }
+            QSpinBox::up-button:pressed, QSpinBox::down-button:pressed {
+                background: #606060;
+            }
         """
 
+        # 最小延迟输入框
         self.min_delay = QSpinBox()
         self.min_delay.setRange(0, 100)
         self.min_delay.setValue(self.config.DELAY_MIN)
         self.min_delay.setMinimumWidth(80)
+        self.min_delay.setMinimumHeight(27)  # 增加最小高度
         self.min_delay.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.min_delay.setStyleSheet(spinbox_style)
 
@@ -186,10 +217,12 @@ class SettingsPage(QWidget):
         """)
         delay_layout.addWidget(delay_to_label)
 
+        # 最大延迟输入框
         self.max_delay = QSpinBox()
         self.max_delay.setRange(0, 100)
         self.max_delay.setValue(self.config.DELAY_MAX)
         self.max_delay.setMinimumWidth(80)
+        self.max_delay.setMinimumHeight(27)  # 增加最小高度
         self.max_delay.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.max_delay.setStyleSheet(spinbox_style)
 
@@ -212,10 +245,12 @@ class SettingsPage(QWidget):
         """)
         retry_layout.addWidget(retry_label)
 
+        # 重试次数输入框
         self.max_retries = QSpinBox()
         self.max_retries.setRange(0, 10)
         self.max_retries.setValue(self.config.MAX_RETRIES)
         self.max_retries.setMinimumWidth(80)
+        self.max_retries.setMinimumHeight(40)  # 增加最小高度
         self.max_retries.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.max_retries.setStyleSheet(spinbox_style)
 
@@ -243,6 +278,7 @@ class SettingsPage(QWidget):
         db_button_layout = QHBoxLayout()
         db_button_layout.setSpacing(10)
 
+        # 清空数据库按钮
         self.clear_db_button = QPushButton("清空数据库")
         self.clear_db_button.setStyleSheet("""
             QPushButton {
@@ -254,6 +290,7 @@ class SettingsPage(QWidget):
                 font-weight: bold;
                 font-size: 14px;
                 min-width: 120px;
+                min-height: 27px;
             }
             QPushButton:hover {
                 background-color: #e9553e;
@@ -263,6 +300,7 @@ class SettingsPage(QWidget):
             }
         """)
 
+        # 备份数据库按钮
         self.backup_db_button = QPushButton("备份数据库")
         self.backup_db_button.setStyleSheet("""
             QPushButton {
@@ -274,6 +312,7 @@ class SettingsPage(QWidget):
                 font-weight: bold;
                 font-size: 14px;
                 min-width: 120px;
+                min-height: 40px;
             }
             QPushButton:hover {
                 background-color: #13981c;
@@ -294,10 +333,17 @@ class SettingsPage(QWidget):
         self.clear_db_button.clicked.connect(self.clear_database)
         self.backup_db_button.clicked.connect(self.backup_database)
 
+        # 连接设置值变化信号
+        self.min_delay.valueChanged.connect(self.save_settings)
+        self.max_delay.valueChanged.connect(self.save_settings)
+        self.max_retries.valueChanged.connect(self.save_settings)
+
         layout.addStretch()
 
     def show_cookie_helper(self):
-        """显示Cookie获取工具"""
+        """
+        @description: 显示Cookie获取工具
+        """
         try:
             self.cookie_helper = CookieHelper(self.config, self.db_handler)
             self.cookie_helper.cookie_ready.connect(self.on_cookie_received)
@@ -305,7 +351,10 @@ class SettingsPage(QWidget):
             QMessageBox.critical(self, "错误", f"启动Cookie获取工具失败: {str(e)}")
 
     def on_cookie_received(self, cookie):
-        """处理获取到的Cookie"""
+        """
+        @description: 处理获取到的Cookie
+        @param {str} cookie - 获取到的Cookie字符串
+        """
         try:
             # 直接显示在输入框中
             self.cookie_input.setText(cookie)
@@ -318,7 +367,9 @@ class SettingsPage(QWidget):
             QMessageBox.critical(self, "错误", f"处理Cookie失败: {str(e)}")
 
     def load_settings(self):
-        """加载当前设置"""
+        """
+        @description: 加载当前设置
+        """
         try:
             cookie, need_update = self.db_handler.get_valid_cookie()
             if cookie:
@@ -352,7 +403,9 @@ class SettingsPage(QWidget):
             QMessageBox.critical(self, "错误", f"加载设置失败: {str(e)}")
 
     def validate_cookie(self):
-        """验证Cookie"""
+        """
+        @description: 验证Cookie有效性
+        """
         cookie = self.cookie_input.toPlainText().strip()
         if not cookie:
             QMessageBox.warning(self, "提示", "请输入Cookie")
@@ -367,7 +420,9 @@ class SettingsPage(QWidget):
             QMessageBox.critical(self, "错误", f"验证Cookie失败: {str(e)}")
 
     def save_cookie(self):
-        """保存Cookie"""
+        """
+        @description: 保存Cookie到数据库
+        """
         cookie = self.cookie_input.toPlainText().strip()
         if not cookie:
             QMessageBox.warning(self, "提示", "请输入Cookie")
@@ -388,7 +443,9 @@ class SettingsPage(QWidget):
             QMessageBox.critical(self, "错误", f"保存Cookie失败: {str(e)}")
 
     def clear_cookie(self):
-        """清除Cookie"""
+        """
+        @description: 清除Cookie信息
+        """
         reply = QMessageBox.question(
             self, "确认", "确定要清除Cookie吗？",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
@@ -405,7 +462,9 @@ class SettingsPage(QWidget):
                 QMessageBox.critical(self, "错误", f"清除Cookie失败: {str(e)}")
 
     def clear_database(self):
-        """清空数据库"""
+        """
+        @description: 清空数据库
+        """
         reply = QMessageBox.question(
             self, "确认",
             "确定要清空数据库吗？此操作将删除所有已爬取的评论数据！",
@@ -420,18 +479,25 @@ class SettingsPage(QWidget):
                 QMessageBox.critical(self, "错误", f"清空数据库失败: {str(e)}")
 
     def backup_database(self):
-        """备份数据库"""
+        """
+        @description: 备份数据库（待实现）
+        """
         QMessageBox.information(self, "提示", "数据库备份功能开发中...")
 
     def closeEvent(self, event):
-        """窗口关闭事件处理"""
+        """
+        @description: 窗口关闭事件处理
+        @param {QCloseEvent} event - 关闭事件
+        """
         if self.cookie_helper:
-            self.cookie_helper.close()
+            self.cookie_helper.cleanup()
             self.cookie_helper = None
         event.accept()
 
     def save_settings(self):
-        """保存爬虫设置到配置类"""
+        """
+        @description: 保存爬虫设置到配置类
+        """
         try:
             self.config.DELAY_MIN = self.min_delay.value()
             self.config.DELAY_MAX = self.max_delay.value()
